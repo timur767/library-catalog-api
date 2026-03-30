@@ -24,6 +24,9 @@ venv/
 # Claude Code
 .claude/
 
+# Technical assignment (local only)
+DETAILED_ASSIGNMENT_FIXED*.md
+
 # Testing
 .pytest_cache/
 .coverage
