@@ -1,4 +1,37 @@
-echo ".env" >> .gitignore
-echo ".idea/" >> .gitignore
-echo "__pycache__/" >> .gitignore
-echo "*.pyc" >> .gitignore
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Claude Code
+.claude/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Alembic
+# (versions tracked intentionally)
+
+# OS
+.DS_Store
+Thumbs.db
