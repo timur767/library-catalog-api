@@ -16,10 +16,10 @@ from src.library_catalog.data.models import book  # noqa: F401
 config = context.config
 
 # Установить database_url из settings
-# Убираем +asyncpg для alembic — используем postgresql:// вместо postgresql+asyncpg://
+# async_engine_from_config работает с postgresql+asyncpg:// напрямую
 config.set_main_option(
     "sqlalchemy.url",
-    settings.database_url_str.replace("+asyncpg", ""),
+    settings.database_url_str,
 )
 
 if config.config_file_name is not None:
