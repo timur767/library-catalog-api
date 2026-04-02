@@ -60,7 +60,7 @@ class BaseApiClient(ABC):
 
         for attempt in range(self.retries):
             try:
-                self.logger.debug(f"{method} {url} params={params}")
+                self.logger.debug("%s %s", method, url)
 
                 response = await self._client.request(
                     method=method,
@@ -73,23 +73,23 @@ class BaseApiClient(ABC):
                 response.raise_for_status()
                 return response.json()
 
-            except httpx.TimeoutException:
+            except (httpx.TimeoutException, httpx.ConnectError):
                 if attempt == self.retries - 1:
-                    self.logger.error(f"Timeout after {self.retries} attempts")
+                    self.logger.error("Timeout/connection error after %d attempts", self.retries)
                     raise
 
                 wait_time = self.backoff * (2 ** attempt)
-                self.logger.warning(f"Timeout, retrying in {wait_time}s...")
+                self.logger.warning("Request failed, retrying in %ss...", wait_time)
                 await asyncio.sleep(wait_time)
 
             except httpx.HTTPStatusError as e:
                 # 5xx ошибки — retry
                 if e.response.status_code >= 500 and attempt < self.retries - 1:
                     wait_time = self.backoff * (2 ** attempt)
-                    self.logger.warning(f"Server error, retrying in {wait_time}s...")
+                    self.logger.warning("Server error, retrying in %ss...", wait_time)
                     await asyncio.sleep(wait_time)
                 else:
-                    self.logger.error(f"HTTP error: {e}")
+                    self.logger.error("HTTP error: %s", e)
                     raise
 
     async def _get(self, path: str, **kwargs) -> dict:

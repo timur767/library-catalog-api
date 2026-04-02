@@ -7,11 +7,9 @@ from ...external.openlibrary.client import OpenLibraryClient
 from ..exceptions import (
     BookAlreadyExistsException,
     BookNotFoundException,
-    InvalidPagesException,
-    InvalidYearException,
     OpenLibraryException,
 )
-from ..mappers.book_mapper import BookMapper
+from ..mappers import book_mapper
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +34,11 @@ class BookService:
         Создать новую книгу с обогащением из Open Library.
 
         Бизнес-правила:
-        - Год не в будущем
-        - Страницы > 0
         - ISBN уникален (если указан)
 
         Raises:
-            InvalidYearException: Если год невалиден
-            InvalidPagesException: Если страницы <= 0
             BookAlreadyExistsException: Если ISBN уже существует
         """
-        self._validate_book_data(book_data)
-
         if book_data.isbn:
             existing = await self.book_repo.find_by_isbn(book_data.isbn)
             if existing:
@@ -65,7 +57,7 @@ class BookService:
             extra=extra,
         )
 
-        return BookMapper.to_show_book(book)
+        return book_mapper.to_show_book(book)
 
     async def get_book(self, book_id: UUID) -> ShowBook:
         """
@@ -78,7 +70,7 @@ class BookService:
         if book is None:
             raise BookNotFoundException(book_id)
 
-        return BookMapper.to_show_book(book)
+        return book_mapper.to_show_book(book)
 
     async def update_book(self, book_id: UUID, book_data: BookUpdate) -> ShowBook:
         """
@@ -86,21 +78,13 @@ class BookService:
 
         Обновляются только переданные поля.
         """
-        existing = await self.book_repo.get_by_id(book_id)
-        if existing is None:
+        book = await self.book_repo.get_by_id(book_id)
+        if book is None:
             raise BookNotFoundException(book_id)
 
-        if book_data.year is not None:
-            self._validate_year(book_data.year)
-        if book_data.pages is not None:
-            self._validate_pages(book_data.pages)
+        updated = await self.book_repo.update(book, **book_data.model_dump(exclude_unset=True))
 
-        updated = await self.book_repo.update(
-            book_id,
-            **book_data.model_dump(exclude_unset=True),
-        )
-
-        return BookMapper.to_show_book(updated)
+        return book_mapper.to_show_book(updated)
 
     async def delete_book(self, book_id: UUID) -> None:
         """
@@ -147,26 +131,9 @@ class BookService:
             available=available,
         )
 
-        return BookMapper.to_show_books(books), total
+        return book_mapper.to_show_books(books), total
 
     # ========== ПРИВАТНЫЕ МЕТОДЫ ==========
-
-    def _validate_book_data(self, data: BookCreate) -> None:
-        """Валидация бизнес-правил для новой книги."""
-        self._validate_year(data.year)
-        self._validate_pages(data.pages)
-
-    def _validate_year(self, year: int) -> None:
-        """Проверить что год валиден."""
-        from datetime import datetime
-        current_year = datetime.now().year
-        if year < 1000 or year > current_year:
-            raise InvalidYearException(year)
-
-    def _validate_pages(self, pages: int) -> None:
-        """Проверить что количество страниц валидно."""
-        if pages <= 0:
-            raise InvalidPagesException(pages)
 
     async def _enrich_book_data(self, book_data: BookCreate) -> dict | None:
         """

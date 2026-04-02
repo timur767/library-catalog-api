@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from ..core.exceptions import AppException, NotFoundException
@@ -25,7 +26,6 @@ class InvalidYearException(AppException):
     """Невалидный год издания."""
 
     def __init__(self, year: int):
-        from datetime import datetime
         current_year = datetime.now().year
         super().__init__(
             message=f"Year {year} is invalid (must be 1000-{current_year})",
@@ -53,11 +53,8 @@ class OpenLibraryException(AppException):
         )
 
 
-class OpenLibraryTimeoutException(AppException):
+class OpenLibraryTimeoutException(OpenLibraryException):
     """Таймаут при обращении к Open Library API."""
 
     def __init__(self, timeout: float):
-        super().__init__(
-            message=f"Open Library API timeout after {timeout}s",
-            status_code=504,
-        )
+        super().__init__(message=f"timeout after {timeout}s")

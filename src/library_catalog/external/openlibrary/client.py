@@ -3,6 +3,7 @@ import httpx
 from ...core.config import settings
 from ...domain.exceptions import OpenLibraryException, OpenLibraryTimeoutException
 from ..base.base_client import BaseApiClient
+from .schemas import OpenLibrarySearchDoc, OpenLibrarySearchResponse
 
 
 class OpenLibraryClient(BaseApiClient):
@@ -33,16 +34,14 @@ class OpenLibraryClient(BaseApiClient):
             OpenLibraryTimeoutException: При таймауте
         """
         try:
-            data = await self._get(
+            raw = await self._get(
                 "/search.json",
                 params={"isbn": isbn, "limit": 1},
             )
-
-            docs = data.get("docs", [])
-            if not docs:
+            response = OpenLibrarySearchResponse(**raw)
+            if not response.docs:
                 return {}
-
-            return self._extract_book_data(docs[0])
+            return self._extract_book_data(response.docs[0])
 
         except httpx.TimeoutException:
             raise OpenLibraryTimeoutException(self.timeout)
@@ -57,16 +56,14 @@ class OpenLibraryClient(BaseApiClient):
             dict: Данные книги или пустой словарь
         """
         try:
-            data = await self._get(
+            raw = await self._get(
                 "/search.json",
                 params={"title": title, "author": author, "limit": 1},
             )
-
-            docs = data.get("docs", [])
-            if not docs:
+            response = OpenLibrarySearchResponse(**raw)
+            if not response.docs:
                 return {}
-
-            return self._extract_book_data(docs[0])
+            return self._extract_book_data(response.docs[0])
 
         except httpx.TimeoutException:
             raise OpenLibraryTimeoutException(self.timeout)
@@ -94,7 +91,13 @@ class OpenLibraryClient(BaseApiClient):
 
         return await self.search_by_title_author(title, author)
 
-    def _extract_book_data(self, doc: dict) -> dict:
+    def _get_cover_url(self, cover_id: int | None) -> str | None:
+        """Получить URL обложки."""
+        if not cover_id:
+            return None
+        return f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+
+    def _extract_book_data(self, doc: OpenLibrarySearchDoc) -> dict:
         """
         Извлечь нужные поля из ответа Open Library.
 
@@ -106,25 +109,19 @@ class OpenLibraryClient(BaseApiClient):
         """
         result = {}
 
-        if cover_id := doc.get("cover_i"):
-            result["cover_url"] = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+        if doc.cover_i:
+            result["cover_url"] = self._get_cover_url(doc.cover_i)
 
-        if subjects := doc.get("subject"):
-            result["subjects"] = subjects[:10]
+        if doc.subject:
+            result["subjects"] = doc.subject[:10]
 
-        if publisher := doc.get("publisher"):
-            result["publisher"] = publisher[0] if publisher else None
+        if doc.publisher:
+            result["publisher"] = doc.publisher[0]
 
-        if language := doc.get("language"):
-            result["language"] = language[0] if language else None
+        if doc.language:
+            result["language"] = doc.language[0]
 
-        if ratings := doc.get("ratings_average"):
-            result["rating"] = ratings
+        if doc.ratings_average:
+            result["rating"] = doc.ratings_average
 
         return result
-
-    def _get_cover_url(self, cover_id: int | None) -> str | None:
-        """Получить URL обложки."""
-        if not cover_id:
-            return None
-        return f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"

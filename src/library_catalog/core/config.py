@@ -12,10 +12,10 @@ class Settings(BaseSettings):
     database_url: PostgresDsn
     database_pool_size: int = 20
     api_v1_prefix: str = "/api/v1"
-    log_level: str = "INFO"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     docs_url: str = "/docs"
     redoc_url: str = "/redoc"
-    cors_origins: list[str] = ["*"]
+    cors_origins: list[str] = []
     openlibrary_base_url: str = "https://openlibrary.org"
     openlibrary_timeout: float = 10.0
 
