@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -28,17 +29,16 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
         try:
             yield session
+            await session.commit()
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()
 
 
 async def init_db() -> None:
     """Проверить подключение к БД при старте приложения."""
-    async with engine.begin() as conn:
-        await conn.run_sync(lambda _: None)
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
 
 
 async def dispose_engine() -> None:

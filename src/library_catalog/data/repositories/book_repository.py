@@ -1,6 +1,4 @@
-from uuid import UUID
-
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.book import Book
@@ -13,6 +11,28 @@ class BookRepository(BaseRepository[Book]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, Book)
 
+    def _build_filter_stmt(
+        self,
+        base_stmt: Select,
+        title: str | None,
+        author: str | None,
+        genre: str | None,
+        year: int | None,
+        available: bool | None,
+    ) -> Select:
+        """Построить WHERE-условия для фильтрации книг."""
+        if title:
+            base_stmt = base_stmt.where(Book.title.ilike(f"%{title}%"))
+        if author:
+            base_stmt = base_stmt.where(Book.author.ilike(f"%{author}%"))
+        if genre:
+            base_stmt = base_stmt.where(Book.genre == genre)
+        if year is not None:
+            base_stmt = base_stmt.where(Book.year == year)
+        if available is not None:
+            base_stmt = base_stmt.where(Book.available == available)
+        return base_stmt
+
     async def find_by_filters(
         self,
         title: str | None = None,
@@ -24,21 +44,8 @@ class BookRepository(BaseRepository[Book]):
         offset: int = 0,
     ) -> list[Book]:
         """Поиск книг с фильтрацией."""
-        stmt = select(Book)
-
-        if title:
-            stmt = stmt.where(Book.title.ilike(f"%{title}%"))
-        if author:
-            stmt = stmt.where(Book.author.ilike(f"%{author}%"))
-        if genre:
-            stmt = stmt.where(Book.genre == genre)
-        if year is not None:
-            stmt = stmt.where(Book.year == year)
-        if available is not None:
-            stmt = stmt.where(Book.available == available)
-
-        stmt = stmt.limit(limit).offset(offset)
-
+        stmt = self._build_filter_stmt(select(Book), title, author, genre, year, available)
+        stmt = stmt.order_by(Book.created_at.desc()).limit(limit).offset(offset)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -58,18 +65,8 @@ class BookRepository(BaseRepository[Book]):
         available: bool | None = None,
     ) -> int:
         """Подсчитать количество книг по фильтрам."""
-        stmt = select(func.count()).select_from(Book)
-
-        if title:
-            stmt = stmt.where(Book.title.ilike(f"%{title}%"))
-        if author:
-            stmt = stmt.where(Book.author.ilike(f"%{author}%"))
-        if genre:
-            stmt = stmt.where(Book.genre == genre)
-        if year is not None:
-            stmt = stmt.where(Book.year == year)
-        if available is not None:
-            stmt = stmt.where(Book.available == available)
-
+        stmt = self._build_filter_stmt(
+            select(func.count()).select_from(Book), title, author, genre, year, available
+        )
         result = await self.session.execute(stmt)
         return result.scalar_one()

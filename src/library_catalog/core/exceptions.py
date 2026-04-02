@@ -39,9 +39,9 @@ class ConflictException(AppException):
         super().__init__(message)
 
 
-def register_exception_handlers(app: FastAPI) -> None:
+def register_exception_handlers(app: "FastAPI") -> None:
     """Зарегистрировать обработчики исключений."""
-    from fastapi import FastAPI, Request
+    from fastapi import Request
     from fastapi.responses import JSONResponse
 
     @app.exception_handler(AppException)

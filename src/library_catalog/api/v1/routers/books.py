@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, status
 
 from ..schemas.book import BookCreate, BookFilters, BookUpdate, ShowBook
 from ..schemas.common import PaginatedResponse, PaginationParams
@@ -44,11 +44,7 @@ async def create_book(
 async def get_books(
     service: BookServiceDep,
     pagination: Annotated[PaginationParams, Depends()],
-    title: str | None = Query(None, description="Поиск по названию"),
-    author: str | None = Query(None, description="Поиск по автору"),
-    genre: str | None = Query(None, description="Фильтр по жанру"),
-    year: int | None = Query(None, description="Фильтр по году"),
-    available: bool | None = Query(None, description="Фильтр по доступности"),
+    filters: Annotated[BookFilters, Depends()],
 ):
     """
     Получить список книг с фильтрацией.
@@ -65,11 +61,7 @@ async def get_books(
     - page_size: размер страницы (1-100, по умолчанию 20)
     """
     books, total = await service.search_books(
-        title=title,
-        author=author,
-        genre=genre,
-        year=year,
-        available=available,
+        **filters.model_dump(),
         limit=pagination.limit,
         offset=pagination.offset,
     )

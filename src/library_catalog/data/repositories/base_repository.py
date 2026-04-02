@@ -18,7 +18,7 @@ class BaseRepository(Generic[T]):
         """Создать запись."""
         instance = self.model(**kwargs)
         self.session.add(instance)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(instance)
         return instance
 
@@ -30,14 +30,11 @@ class BaseRepository(Generic[T]):
         """
         return await self.session.get(self.model, id)
 
-    async def update(self, id: UUID, **kwargs) -> T | None:
-        """Обновить запись."""
-        instance = await self.get_by_id(id)
-        if instance is None:
-            return None
+    async def update(self, instance: T, **kwargs) -> T:
+        """Обновить уже полученный экземпляр."""
         for key, value in kwargs.items():
             setattr(instance, key, value)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(instance)
         return instance
 
@@ -47,7 +44,7 @@ class BaseRepository(Generic[T]):
         if instance is None:
             return False
         await self.session.delete(instance)
-        await self.session.commit()
+        await self.session.flush()
         return True
 
     async def get_all(self, limit: int = 100, offset: int = 0) -> list[T]:
